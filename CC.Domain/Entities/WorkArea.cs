@@ -1,0 +1,12 @@
+﻿using CC.Domain.Interfaces;
+
+namespace CC.Domain.Entities;
+
+public class WorkArea : EntityBase<Guid>, IAuditable
+{
+    public string Name { get; set; }
+    public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false;
+    public string Color { get; set; } = "#FFFFFF";
+    public ICollection<Workstation> workstations { get; set; }
+}

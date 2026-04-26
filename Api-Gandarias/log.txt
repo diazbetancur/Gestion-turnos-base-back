@@ -1,0 +1,22 @@
+2025-05-08 19:23:47.319 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 19:29:06.387 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 19:29:49.823 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 19:31:26.606 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 19:43:04.923 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:43:44.310 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:44:30.094 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:48:33.976 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 19:49:04.230 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:49:17.931 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:50:07.344 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:51:15.045 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 19:51:38.626 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 20:03:43.375 -05:00 [INF] Done setting up serilog - Application starting up
+2025-05-08 20:07:27.652 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-05-08 20:09:28.922 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-06-04 20:53:06.434 -05:00 [INF] Done setting up serilog - Application starting up
+2025-06-04 20:57:11.406 -05:00 [INF] Done setting up serilog - Application starting up
+2025-06-06 08:20:37.846 -05:00 [INF] Done setting up serilog - Application starting up
+2025-06-06 08:37:16.045 -05:00 [ERR] An error occurred while saving the entity changes. See the inner exception for details.
+2025-07-20 11:14:06.026 -05:00 [INF] Done setting up serilog - Application starting up
+2025-07-27 15:03:40.723 -05:00 [INF] Done setting up serilog - Application starting up
