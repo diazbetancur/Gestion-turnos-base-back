@@ -24,6 +24,7 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=build /src/Api-Gandarias/appsettings.json ./
 COPY --from=build /src/Api-Gandarias/appsettings.Development.json ./
+COPY --from=build /src/Api-Gandarias/appsettings.qa.json ./
 COPY --from=build /src/Api-Gandarias/appsettings.Production.json ./
 
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
