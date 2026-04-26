@@ -2,6 +2,7 @@
 using CC.Domain.Helpers;
 using CC.Domain.Interfaces.Repositories;
 using CC.Domain.Interfaces.Services;
+using CC.Domain.Options;
 using CC.Infrastructure.Configurations;
 using CC.Infrastructure.EmailServices;
 using CC.Infrastructure.Interceptors;
@@ -30,26 +31,7 @@ public class DependencyInyectionHandler
 
             #region Database Configuration
 
-            // Prefer environment variable in container
-            string? connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                connectionString = configuration.GetConnectionString("PgSQL");
-                Console.WriteLine("DB: Using configuration connection string (PgSQL)");
-
-                if (string.IsNullOrWhiteSpace(connectionString))
-                {
-                    connectionString = GetConnectionStringFromJsonFiles(environment);
-                    if (!string.IsNullOrWhiteSpace(connectionString))
-                    {
-                        Console.WriteLine("DB: Recovered connection string from json files fallback");
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine("DB: Using DATABASE_URL from environment");
-            }
+            var connectionString = configuration.GetConnectionString("PgSQL");
 
             if (string.IsNullOrWhiteSpace(connectionString))
                 throw new InvalidOperationException("Database connection string not found");
@@ -95,41 +77,15 @@ public class DependencyInyectionHandler
 
             #region EmailService
 
-            try
+            services.PostConfigure<EmailServiceOptions>(options =>
             {
-                services.Configure<EmailServiceOptions>(options =>
-                {
-                    options.SmtpServer = GetValidEnvironmentVariable("SMTP_SERVER")
-                        ?? configuration["EmailService:smtpServer"]
-                        ?? "localhost";
+                options.SmtpPort = options.SmtpPort <= 0 ? 587 : options.SmtpPort;
+            });
 
-                    var smtpPortEnv = GetValidIntFromEnvironment("SMTP_PORT", 587);
-                    var smtpPortConfig = configuration["EmailService:smtpPort"];
-                    if (smtpPortEnv.HasValue) options.SmtpPort = smtpPortEnv.Value;
-                    else if (!string.IsNullOrEmpty(smtpPortConfig) && !smtpPortConfig.Contains("${")) options.SmtpPort = int.Parse(smtpPortConfig);
-                    else options.SmtpPort = 587;
-
-                    options.SmtpUser = GetValidEnvironmentVariable("SMTP_USER")
-                        ?? configuration["EmailService:smtpUser"]
-                        ?? "test@localhost";
-
-                    options.SmtpPassword = GetValidEnvironmentVariable("SMTP_PASSWORD")
-                        ?? configuration["EmailService:smtpPassword"]
-                        ?? "password";
-
-                    var enableSslEnv = GetValidBoolFromEnvironment("SMTP_ENABLE_SSL", true);
-                    var enableSslConfig = configuration["EmailService:EnableSsl"];
-                    if (enableSslEnv.HasValue) options.EnableSsl = enableSslEnv.Value;
-                    else if (!string.IsNullOrEmpty(enableSslConfig) && !enableSslConfig.Contains("${")) options.EnableSsl = bool.Parse(enableSslConfig);
-                    else options.EnableSsl = true;
-                });
-
-                Console.WriteLine("✅ Email service configured");
-            }
-            catch (Exception ex)
+            services.PostConfigure<MigrationSettingsOptions>(options =>
             {
-                Console.WriteLine($"Email service configuration warning: {ex.Message}");
-            }
+                options.BaselineMigrationId = options.BaselineMigrationId?.Trim() ?? string.Empty;
+            });
 
             #endregion EmailService
 
@@ -157,51 +113,6 @@ public class DependencyInyectionHandler
             Console.WriteLine($"DI failure: {ex.Message}");
             throw new InvalidOperationException("Dependency injection configuration failed", ex);
         }
-    }
-
-    private static string? GetConnectionStringFromJsonFiles(string environment)
-    {
-        try
-        {
-            var basePath = AppContext.BaseDirectory;
-            var fileConfig = new ConfigurationBuilder()
-                .SetBasePath(basePath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-                .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: false)
-                .Build();
-
-            return fileConfig.GetConnectionString("PgSQL");
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string? GetValidEnvironmentVariable(string variableName)
-    {
-        var value = Environment.GetEnvironmentVariable(variableName);
-        if (string.IsNullOrWhiteSpace(value) || value.Contains("${") || (value.Contains("$") && value.Contains("{") && value.Contains("}")))
-            return null;
-        return value;
-    }
-
-    private static int? GetValidIntFromEnvironment(string variableName, int defaultValue)
-    {
-        var value = GetValidEnvironmentVariable(variableName);
-        if (value == null) return null;
-        if (int.TryParse(value, out int result)) return result;
-        Console.WriteLine($"Warning: env {variableName} invalid int: {value}");
-        return null;
-    }
-
-    private static bool? GetValidBoolFromEnvironment(string variableName, bool defaultValue)
-    {
-        var value = GetValidEnvironmentVariable(variableName);
-        if (value == null) return null;
-        if (bool.TryParse(value, out bool result)) return result;
-        Console.WriteLine($"Warning: env {variableName} invalid bool: {value}");
-        return null;
     }
 
     public static void ServicesRegistration(IServiceCollection services)

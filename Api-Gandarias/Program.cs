@@ -1,9 +1,12 @@
 using CC.Domain.Entities;
+using CC.Domain.Options;
 using CC.Infrastructure.Configurations;
+using Gandarias.Configuration;
 using Gandarias.Handlers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -17,18 +20,9 @@ if (string.IsNullOrWhiteSpace(aspnetEnvironment) && !string.IsNullOrWhiteSpace(d
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Environment & Config
-Console.WriteLine($"DOTNET_ENVIRONMENT: {Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "(null)"}");
-Console.WriteLine($"ASPNETCORE_ENVIRONMENT: {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "(null)"}");
 Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
-builder.Configuration
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables();
-
-var envSettingsPath = Path.Combine(Directory.GetCurrentDirectory(), $"appsettings.{builder.Environment.EnvironmentName}.json");
-Console.WriteLine($"Env settings file present: {File.Exists(envSettingsPath)} ({envSettingsPath})");
+builder.Configuration.AddSecureConfigurationSources(builder.Environment);
+builder.Services.AddSecureApplicationConfiguration(builder.Configuration);
 
 // Services
 builder.Services.AddHealthChecks();
@@ -41,8 +35,6 @@ SwaggerHandler.SwaggerConfig(builder.Services);
 
 // Dependency Injection (pass configuration & environment)
 DependencyInyectionHandler.DepencyInyectionConfig(builder.Services, builder.Configuration, builder.Environment.EnvironmentName);
-
-Console.WriteLine($"ConnStr PgSQL available: {!string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("PgSQL"))}");
 
 // Identity
 builder.Services.AddIdentity<User, Role>(opt =>
@@ -57,20 +49,7 @@ builder.Services.AddIdentity<User, Role>(opt =>
     opt.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(30);
 }).AddRoles<Role>().AddEntityFrameworkStores<DBContext>().AddDefaultTokenProviders();
 
-// JWT - read from env first, then config
-var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
-            ?? builder.Configuration["jwtKey"]
-            ?? string.Empty;
-
-if (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.Contains("${"))
-{
-    throw new InvalidOperationException("JWT secret key not configured properly. Set JWT_SECRET_KEY env var with at least 32 characters.");
-}
-if (jwtKey.Length < 32)
-{
-    throw new InvalidOperationException($"JWT secret key too short: {jwtKey.Length} chars. Minimum 32 required.");
-}
-Console.WriteLine($"JWT key length OK: {jwtKey.Length} chars");
+var jwtKey = builder.Configuration.GetRequiredJwtKey();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(x =>
@@ -89,6 +68,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+var startupConfigurationValidator = app.Services.GetRequiredService<StartupConfigurationValidator>();
+startupConfigurationValidator.Validate();
+var allowedOrigins = startupConfigurationValidator.GetAllowedOrigins();
 
 // Apply EF Core migrations automatically on startup
 using (var scope = app.Services.CreateScope())
@@ -96,36 +78,35 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<DBContext>();
-        var autoMigrateEnabledConfig = builder.Configuration["MigrationSettings:EnableAutoMigrate"];
-        var autoMigrateEnabled = string.IsNullOrWhiteSpace(autoMigrateEnabledConfig)
-            || bool.TryParse(autoMigrateEnabledConfig, out var enabled) && enabled;
+        var migrationSettings = scope.ServiceProvider.GetRequiredService<IOptions<MigrationSettingsOptions>>().Value;
+        var autoMigrateEnabled = migrationSettings.EnableAutoMigrate;
 
         if (!autoMigrateEnabled)
         {
-            Console.WriteLine("⚠️ Auto migrations disabled by configuration");
+            Console.WriteLine("Auto migrations are disabled by configuration.");
         }
         else
         {
             await EnsureMigrationsHistoryTableAsync(dbContext);
-            await SeedMigrationBaselineIfNeededAsync(dbContext, builder.Configuration);
+            await SeedMigrationBaselineIfNeededAsync(dbContext, migrationSettings);
 
             var pendingMigrations = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
 
             if (pendingMigrations.Any())
             {
-                Console.WriteLine($"🔄 Applying migrations: {string.Join(", ", pendingMigrations)}");
+                Console.WriteLine($"Applying {pendingMigrations.Count} pending migration(s).");
                 await dbContext.Database.MigrateAsync();
-                Console.WriteLine("✅ Database migrations applied successfully");
+                Console.WriteLine("Database migrations applied successfully.");
             }
             else
             {
-                Console.WriteLine("✅ No pending migrations");
+                Console.WriteLine("No pending migrations.");
             }
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ Error applying migrations: {ex.Message}");
+        Console.WriteLine($"Error applying migrations: {ex.Message}");
         throw;
     }
 }
@@ -141,9 +122,9 @@ static async Task EnsureMigrationsHistoryTableAsync(DBContext dbContext)
     ");
 }
 
-static async Task SeedMigrationBaselineIfNeededAsync(DBContext dbContext, IConfiguration configuration)
+static async Task SeedMigrationBaselineIfNeededAsync(DBContext dbContext, MigrationSettingsOptions migrationSettings)
 {
-    var baselineMigrationId = configuration["MigrationSettings:BaselineMigrationId"];
+    var baselineMigrationId = migrationSettings.BaselineMigrationId;
     if (string.IsNullOrWhiteSpace(baselineMigrationId))
         return;
 
@@ -163,7 +144,7 @@ static async Task SeedMigrationBaselineIfNeededAsync(DBContext dbContext, IConfi
     var allMigrations = dbContext.Database.GetMigrations().ToList();
     if (!allMigrations.Contains(baselineMigrationId))
     {
-        Console.WriteLine($"⚠️ Baseline migration '{baselineMigrationId}' not found in assembly migrations");
+        Console.WriteLine($"Baseline migration '{baselineMigrationId}' was not found in the assembly migrations.");
         return;
     }
 
@@ -182,25 +163,25 @@ static async Task SeedMigrationBaselineIfNeededAsync(DBContext dbContext, IConfi
             productVersion);
     }
 
-    Console.WriteLine($"✅ Migration baseline seeded up to: {baselineMigrationId}");
+    Console.WriteLine($"Migration baseline seeded up to '{baselineMigrationId}'.");
 }
 
 // Ejecutar Seeder en background (no bloquea el inicio)
 _ = Task.Run(async () =>
 {
     await Task.Delay(2000); // Esperar 2 segundos a que la app inicie
-    Console.WriteLine("🌱 Running database seeder in background...");
+    Console.WriteLine("Running database seeder in background...");
     using (var scope = app.Services.CreateScope())
     {
         try
         {
             var seeder = scope.ServiceProvider.GetRequiredService<SeedDB>();
             await seeder.SeedAsync();
-            Console.WriteLine("✅ Database seeder completed successfully");
+            Console.WriteLine("Database seeder completed successfully.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error running seeder: {ex.Message}");
+            Console.WriteLine($"Error running seeder: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
     }
@@ -233,28 +214,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// CORS - Permisivo en Development, restrictivo en Production
-string[] allowedOrigins;
-if (app.Environment.IsDevelopment())
-{
-    // Development: Permitir localhost y el frontend de QA
-    allowedOrigins = new[]
-    {
-        "http://localhost:3000",
-        "http://localhost:4200",
-        "http://localhost:5173",
-        "http://gandarias-qa.s3-website.eu-central-1.amazonaws.com",
-        "http://gandarias.s3-website.eu-north-1.amazonaws.com"
-    };
-    Console.WriteLine($"CORS: Development mode - allowing: {string.Join(", ", allowedOrigins)}");
-}
-else
-{
-    // Production: Solo dominios autorizados desde configuración
-    allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
-        ?? new[] { "https://app.restaurantegandarias.com" };
-    Console.WriteLine($"CORS: Production mode - restricting to: {string.Join(", ", allowedOrigins)}");
-}
+Console.WriteLine($"CORS configured with {allowedOrigins.Length} origin(s) for environment {app.Environment.EnvironmentName}.");
 
 app.UseCors(x => x
     .WithOrigins(allowedOrigins)

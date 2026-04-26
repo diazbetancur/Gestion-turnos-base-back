@@ -1,12 +1,1 @@
-{
-  "Version": 1,
-  "Hash": "8yj0XQ6ZigYgydS4E0j9XF9oKwyD4Z6VAmyOQLxGaas=",
-  "Source": "Api-Gandarias",
-  "BasePath": "_content/Api-Gandarias",
-  "Mode": "Default",
-  "ManifestType": "Build",
-  "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
-  "Assets": [],
-  "Endpoints": []
-}
+{"Version":1,"Hash":"tuWAw99QcGm+Ug8pFWvQ3CcdUh7yIz2+1zyDs4qrwv0=","Source":"Api-Gandarias","BasePath":"/","Mode":"Root","ManifestType":"Build","ReferencedProjectsConfiguration":[],"DiscoveryPatterns":[],"Assets":[],"Endpoints":[]}

@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/logs/
+*.log
+*.user
+.env
+.env.*
+secrets.json
+appsettings.Local.json
+appsettings.*.local.json
+Api-Gandarias/log.txt

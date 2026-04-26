@@ -1,5 +1,6 @@
 ﻿using CC.Domain.Interfaces.Services;
-using Microsoft.Extensions.Configuration;
+using CC.Domain.Options;
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 
 namespace CC.Infrastructure.Repositories;
@@ -9,10 +10,10 @@ public class AesEncryptionService : IEncryptionService
     private readonly string _key;
     private readonly string _iv;
 
-    public AesEncryptionService(IConfiguration configuration)
+    public AesEncryptionService(IOptions<EncryptionOptions> options)
     {
-        _key = configuration["Encryption:Key"] ?? throw new ArgumentException("Encryption key not configured");
-        _iv = configuration["Encryption:IV"] ?? throw new ArgumentException("Encryption IV not configured");
+        _key = options.Value.Key ?? throw new ArgumentException("Encryption key not configured");
+        _iv = options.Value.IV ?? throw new ArgumentException("Encryption IV not configured");
     }
 
     public async Task<string> EncryptAsync(string plainText)

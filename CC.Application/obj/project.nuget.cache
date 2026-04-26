@@ -70,7 +70,7 @@
     {
       "code": "NU1903",
       "level": "Warning",
-      "message": "Package 'AutoMapper' 13.0.1 has a known high severity vulnerability, https://github.com/advisories/GHSA-rvv3-g6hj-g44x",
+      "message": "El paquete \"AutoMapper\" 13.0.1 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-rvv3-g6hj-g44x",
       "projectPath": "/Users/diazbetancur/Proyectos/Gestion-Turnos-Base/Gestion-turnos-base-back/CC.Application/CC.Application.csproj",
       "warningLevel": 1,
       "filePath": "/Users/diazbetancur/Proyectos/Gestion-Turnos-Base/Gestion-turnos-base-back/CC.Application/CC.Application.csproj",

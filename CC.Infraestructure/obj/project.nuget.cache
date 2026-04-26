@@ -94,7 +94,7 @@
     {
       "code": "NU1902",
       "level": "Warning",
-      "message": "Package 'SixLabors.ImageSharp' 3.1.10 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
+      "message": "El paquete \"SixLabors.ImageSharp\" 3.1.10 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
       "projectPath": "/Users/diazbetancur/Proyectos/Gestion-Turnos-Base/Gestion-turnos-base-back/CC.Infraestructure/CC.Infrastructure.csproj",
       "warningLevel": 1,
       "filePath": "/Users/diazbetancur/Proyectos/Gestion-Turnos-Base/Gestion-turnos-base-back/CC.Infraestructure/CC.Infrastructure.csproj",

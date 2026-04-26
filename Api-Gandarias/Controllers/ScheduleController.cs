@@ -5,11 +5,13 @@ using CC.Domain.Entities;
 using CC.Domain.Enums;
 using CC.Domain.Helpers;
 using CC.Domain.Interfaces.Services;
+using CC.Domain.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -34,7 +36,7 @@ public class ScheduleController : ControllerBase
     private readonly IScheduleGapService _scheduleGapService;
     private readonly IScheduleSuggestionService _scheduleSuggestionService;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
+    private readonly PythonApiSettingsOptions _pythonApiSettings;
 
     public ScheduleController(IScheduleService scheduleService,
         IUserWorkstationService userWorkstationService,
@@ -48,7 +50,7 @@ public class ScheduleController : ControllerBase
         IScheduleGapService scheduleGapService,
         IScheduleSuggestionService scheduleSuggestionService,
         IHttpClientFactory httpClientFactory,
-        IConfiguration configuration)
+        IOptions<PythonApiSettingsOptions> pythonApiSettings)
     {
         _scheduleService = scheduleService;
         _userWorkstationService = userWorkstationService;
@@ -63,7 +65,7 @@ public class ScheduleController : ControllerBase
         _scheduleGapService = scheduleGapService;
         _scheduleSuggestionService = scheduleSuggestionService;
         _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
+        _pythonApiSettings = pythonApiSettings.Value;
     }
 
     /// <summary>
@@ -601,8 +603,8 @@ public class ScheduleController : ControllerBase
         {
             //var httpClient = _httpClientFactory.CreateClient();
 
-            //var baseUrl = _configuration["PythonApiSettings:BaseUrl"];
-            var timeout = _configuration.GetValue<int>("PythonApiSettings:Timeout", 1520);
+            //var baseUrl = _pythonApiSettings.BaseUrl;
+            var timeout = _pythonApiSettings.Timeout > 0 ? _pythonApiSettings.Timeout : 1520;
 
             //httpClient.Timeout = TimeSpan.FromSeconds(timeout);
 
@@ -624,7 +626,7 @@ public class ScheduleController : ControllerBase
             using var lambdaClient = new AmazonLambdaClient(config);
             var invokeRequest = new InvokeRequest
             {
-                FunctionName = _configuration["PythonApiSettings:FunctionName"],
+                FunctionName = _pythonApiSettings.FunctionName,
                 Payload = jsonPayload
             };
 

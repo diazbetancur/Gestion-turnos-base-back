@@ -5,9 +5,10 @@ using CC.Domain.Enums;
 using CC.Domain.Helpers;
 using CC.Domain.Interfaces.Repositories;
 using CC.Domain.Interfaces.Services;
+using CC.Domain.Options;
 using CC.Domain.Services;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,20 +20,30 @@ namespace CC.Application.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
-        private readonly IConfiguration _configuration;
         private readonly IRolePermissionRepository _rolePermissionRepository;
+        private readonly JwtSecurityOptions _jwtSecurityOptions;
+        private readonly JwtTokenSettingsOptions _jwtTokenSettingsOptions;
+        private readonly GenearlsOptions _genearlsOptions;
 
-        public UserService(IUserRepository userRepository, IMapper mapper, IConfiguration configuration, IRolePermissionRepository rolePermissionRepository) : base(userRepository, mapper)
+        public UserService(
+            IUserRepository userRepository,
+            IMapper mapper,
+            IRolePermissionRepository rolePermissionRepository,
+            IOptions<JwtSecurityOptions> jwtSecurityOptions,
+            IOptions<JwtTokenSettingsOptions> jwtTokenSettingsOptions,
+            IOptions<GenearlsOptions> genearlsOptions) : base(userRepository, mapper)
         {
             _userRepository = userRepository;
             _mapper = mapper;
-            _configuration = configuration;
             _rolePermissionRepository = rolePermissionRepository;
+            _jwtSecurityOptions = jwtSecurityOptions.Value;
+            _jwtTokenSettingsOptions = jwtTokenSettingsOptions.Value;
+            _genearlsOptions = genearlsOptions.Value;
         }
 
         public async Task<ActionResponse<User>> AddUserAsync(UserDto user, string password)
         {
-            password = Extensions.GenerateRandomPassword();
+            //password = Extensions.GenerateRandomPassword();
             var existingUser = await _userRepository.GetUserAsync(user.DNI);
             if (existingUser != null)
             {
@@ -303,13 +314,10 @@ namespace CC.Application.Services
             claims.Add(new Claim("Role", string.Join(",", roles)));
             claims.Add(new Claim("Permissions", string.Join(",", permissions)));
 
-            SymmetricSecurityKey key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["jwtKey"]));
+            SymmetricSecurityKey key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSecurityOptions.Key));
             SigningCredentials creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var defaultHoursConfig = _configuration["JwtTokenSettings:DefaultHours"];
-            var coordinatorHoursConfig = _configuration["JwtTokenSettings:CoordinatorHours"];
-
-            var defaultHours = int.TryParse(defaultHoursConfig, out var defaultValue) ? defaultValue : 8;
-            var coordinatorHours = int.TryParse(coordinatorHoursConfig, out var coordinatorValue) ? coordinatorValue : 24;
+            var defaultHours = _jwtTokenSettingsOptions.DefaultHours > 0 ? _jwtTokenSettingsOptions.DefaultHours : 8;
+            var coordinatorHours = _jwtTokenSettingsOptions.CoordinatorHours > 0 ? _jwtTokenSettingsOptions.CoordinatorHours : 24;
 
             DateTime expiration = roles.Any(x =>
                 string.Equals(x, RoleType.Coordinator.ToString(), StringComparison.OrdinalIgnoreCase))
@@ -345,7 +353,8 @@ namespace CC.Application.Services
             }
 
             string response = await GeneratePasswordResetTokenAsync(userFind);
-            var url = _configuration.GetSection("Genearls:UrlForgot").Value + "/?Id=" + userFind.UserName + "&Code=" + response;
+            var forgotPasswordBaseUrl = _genearlsOptions.UrlForgot.Trim();
+            var url = forgotPasswordBaseUrl + "/?Id=" + userFind.UserName + "&Code=" + response;
 
             return new ActionResponse<string>
             {

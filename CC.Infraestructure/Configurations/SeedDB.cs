@@ -73,7 +73,7 @@ public class SeedDB
                 PhoneNumber = "123456789",
             };
 
-            ActionResponse<User> resultUserCreated = await _userService.AddUserAsync(user, "Gandarias1.");
+            ActionResponse<User> resultUserCreated = await _userService.AddUserAsync(user, "RestBase1.");
 
             if (resultUserCreated.WasSuccessful)
             {
@@ -228,6 +228,7 @@ public class SeedDB
 
     private async Task fillDataUser()
     {
+        return; // Descomentar para llenar la base de datos con los usuarios
         var tiempoCompleto = _context.HireTypes.FirstOrDefault(x => x.Name.ToLower().Trim() == "tiempo completo");
         var tiempoParcial = _context.HireTypes.FirstOrDefault(x => x.Name.ToLower().Trim() == "tiempo parcial");
         var extra = _context.HireTypes.FirstOrDefault(x => x.Name.ToLower().Trim() == "extra");
